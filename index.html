@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Infinite Radio BGM - 連続AIラジオ</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- FontAwesome for fallback & stylish icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#035485',
+              900: '#0c4a6e',
+            }
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'bounce-bar': 'bounceBar 1.2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            bounceBar: {
+              '0%': { height: '15%' },
+              '100%': { height: '100%' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.7);
+    }
+    .equalizer-bar {
+      transition: height 0.15s ease;
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased selection:bg-brand-500 selection:text-white transition-colors duration-200">
+
+<div id="app" class="min-h-screen flex flex-col justify-between">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 w-full backdrop-blur border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 px-4 lg:px-8 py-3 transition-colors">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-gradient-to-tr from-brand-600 to-indigo-600 text-white rounded-xl shadow-lg shadow-brand-500/20">
+          <i data-lucide="radio" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-tight flex items-center gap-2">
+            AI Talk Radio
+            <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-700">Live BGM</span>
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">音楽不要・エンドレスAIトークBGM</p>
+        </div>
+      </div>
+
+      <!-- Settings Controls -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Personality Preset Trigger -->
+        <button id="btn-personality-modal" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition">
+          <i data-lucide="user-cog" class="w-4 h-4 text-brand-600 dark:text-brand-400"></i>
+          <span id="personality-badge" class="hidden sm:inline font-medium">女性 / 30代</span>
+        </button>
+
+        <!-- Theme Selector Toggle -->
+        <div class="relative inline-block">
+          <button id="btn-theme-menu" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="テーマ切り替え">
+            <i id="theme-icon" data-lucide="sun" class="w-4 h-4"></i>
+          </button>
+          <div id="theme-dropdown" class="hidden absolute right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-50">
+            <button onclick="setTheme('light')" class="w-full text-left px-4 py-2 text-xs flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+              <i data-lucide="sun" class="w-3.5 h-3.5"></i> ライト
+            </button>
+            <button onclick="setTheme('dark')" class="w-full text-left px-4 py-2 text-xs flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+              <i data-lucide="moon" class="w-3.5 h-3.5"></i> ダーク
+            </button>
+            <button onclick="setTheme('system')" class="w-full text-left px-4 py-2 text-xs flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+              <i data-lucide="laptop" class="w-3.5 h-3.5"></i> システム準拠
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 flex-1">
+    
+    <!-- Player Hero Banner -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white p-6 md:p-8 shadow-2xl border border-slate-700/50">
+      <!-- Background Ambient Glow -->
+      <div class="absolute -right-16 -top-16 w-64 h-64 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+        <!-- Visualizer & Personality Status -->
+        <div class="md:col-span-4 flex flex-col items-center justify-center text-center p-4 bg-slate-800/40 rounded-2xl border border-slate-700/40 backdrop-blur">
+          <!-- DJ Avatar Icon -->
+          <div class="relative mb-3">
+            <div id="avatar-container" class="w-24 h-24 rounded-full bg-gradient-to-tr from-brand-500 to-indigo-500 flex items-center justify-center text-3xl shadow-lg ring-4 ring-slate-700/50">
+              <i id="avatar-icon" class="fa-solid fa-headset text-white"></i>
+            </div>
+            <div id="status-dot" class="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-slate-500 border-2 border-slate-900"></div>
+          </div>
+          
+          <h2 id="personality-title" class="font-bold text-lg text-slate-100">ナビゲーター (女性 / 30代)</h2>
+          <p id="channel-current-tag" class="text-xs text-brand-300 font-medium mt-0.5">● 選択中: テクノロジー</p>
+
+          <!-- Equalizer Animation -->
+          <div id="equalizer" class="flex items-end justify-center gap-1.5 h-10 my-4 w-32">
+            <div class="equalizer-bar w-2 bg-brand-400 rounded-t h-[15%]"></div>
+            <div class="equalizer-bar w-2 bg-brand-400 rounded-t h-[15%]"></div>
+            <div class="equalizer-bar w-2 bg-indigo-400 rounded-t h-[15%]"></div>
+            <div class="equalizer-bar w-2 bg-indigo-400 rounded-t h-[15%]"></div>
+            <div class="equalizer-bar w-2 bg-brand-400 rounded-t h-[15%]"></div>
+            <div class="equalizer-bar w-2 bg-brand-400 rounded-t h-[15%]"></div>
+          </div>
+
+          <!-- Play/Pause Big Button -->
+          <button id="btn-play-pause" class="w-full py-3 px-6 rounded-xl font-bold bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/30 transition flex items-center justify-center gap-2">
+            <i id="play-btn-icon" data-lucide="play" class="w-5 h-5 fill-current"></i>
+            <span id="play-btn-text">ラジオを聞く (ON)</span>
+          </button>
+        </div>
+
+        <!-- Live Talk Script Panel -->
+        <div class="md:col-span-8 flex flex-col justify-between h-full space-y-4">
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-400 uppercase tracking-wider mb-2">
+              <span class="flex items-center gap-1.5 font-semibold text-brand-400">
+                <i data-lucide="sparkles" class="w-4 h-4"></i> Now Broadcasting
+              </span>
+              <span id="broadcast-time" class="font-mono">LIVE</span>
+            </div>
+            
+            <h3 id="current-topic-title" class="text-xl md:text-2xl font-extrabold text-white leading-tight mb-3">
+              ラジオをONにして最新トークを開始...
+            </h3>
+
+            <!-- Text Teleprompter Box -->
+            <div class="relative bg-slate-900/80 rounded-xl p-4 border border-slate-700/60 max-h-48 overflow-y-auto">
+              <p id="current-script-text" class="text-slate-300 text-sm md:text-base leading-relaxed whitespace-pre-line italic">
+                チャンネルを選択して再生ボタンを押すと、AIナビゲーターが最新情報や独自の考察をラジオ番組風に語り始めます。
+              </p>
+            </div>
+          </div>
+
+          <!-- Upcoming Next Prompt Preview -->
+          <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <div class="flex items-center gap-2 truncate">
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold text-[10px]">NEXT</span>
+              <span id="next-topic-preview" class="truncate text-slate-300">次回のトピックを自動読み込み中...</span>
+            </div>
+            <button id="btn-skip-topic" class="text-slate-400 hover:text-white flex items-center gap-1 shrink-0 ml-2 text-xs">
+              スキップ <i data-lucide="skip-forward" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold tracking-tight">チャンネル選択</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">関心のあるジャンルをタップすると自動で番組が切り替わります</p>
+        </div>
+      </div>
+
+      <!-- Channel Grid -->
+      <div id="channels-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+        <!-- Generated Dynamically by JS -->
+      </div>
+    </div>
+
+    <!-- Broadcast History & Topic Log -->
+    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+        <i data-lucide="list-music" class="w-4 h-4 text-brand-500"></i> トーク履歴 / トピックログ
+      </h3>
+      <div id="history-list" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-xs text-slate-600 dark:text-slate-400">
+        <p class="text-slate-400 italic">まだ再生履歴はありません。</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-4 text-center text-xs text-slate-500 dark:text-slate-500 border-t border-slate-200 dark:border-slate-800">
+    AI Talk Radio — Powered by Gemini 3.1 Flash & Web Speech API
+  </footer>
+</div>
+
+<!-- Personality Config Modal -->
+<div id="personality-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-5">
+    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+      <h3 class="font-bold text-base flex items-center gap-2">
+        <i data-lucide="sliders" class="w-5 h-5 text-brand-500"></i> パーソナリティー設定
+      </h3>
+      <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Gender Selector -->
+    <div class="space-y-2">
+      <label class="block text-xs font-semibold uppercase text-slate-500">性別 (Gender)</label>
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button" data-gender="female" class="gender-btn flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 font-bold text-sm">
+          <i data-lucide="user" class="w-4 h-4"></i> 女性
+        </button>
+        <button type="button" data-gender="male" class="gender-btn flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-medium text-sm">
+          <i data-lucide="user-check" class="w-4 h-4"></i> 男性
+        </button>
+      </div>
+    </div>
+
+    <!-- Age Selector -->
+    <div class="space-y-2">
+      <label class="block text-xs font-semibold uppercase text-slate-500">年代 / 声質 (Age Range)</label>
+      <div class="grid grid-cols-3 gap-2" id="age-selector-container">
+        <!-- 10s-60s buttons -->
+      </div>
+    </div>
+
+    <!-- Pitch & Speed Manual Adjustment Preview -->
+    <div class="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl space-y-2 text-xs">
+      <div class="flex justify-between text-slate-500">
+        <span>推定ピッチ (Pitch): <b id="pitch-val">1.2</b></span>
+        <span>話速 (Rate): <b id="rate-val">1.0</b></span>
+      </div>
+      <p class="text-[11px] text-slate-400">※年代・性別に応じて音声パラメータが自動調節されます。</p>
+    </div>
+
+    <button id="btn-save-personality" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition shadow-lg shadow-brand-500/20">
+      設定を適用して確定
+    </button>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   Continuous AI Radio Application State & Configurations
+   ========================================================================== */
+
+const CHANNELS = [
+  { id: 'domestic', name: '国内', icon: 'fa-location-dot', color: 'from-blue-500 to-cyan-500', desc: '日本のトレンド・社会トピック' },
+  { id: 'international', name: '海外', icon: 'fa-globe', color: 'from-purple-500 to-indigo-500', desc: '世界の出来事・グローバルカルチャー' },
+  { id: 'business', name: 'ビジネス', icon: 'fa-briefcase', color: 'from-emerald-500 to-teal-500', desc: '最新の働き方・企業トレンド' },
+  { id: 'tech', name: 'テクノロジー', icon: 'fa-microchip', color: 'from-cyan-500 to-blue-600', desc: 'AI・Web・ガジェット最前線' },
+  { id: 'politics', name: '政治', icon: 'fa-landmark', color: 'from-amber-500 to-orange-500', desc: '国内外の政策・議論' },
+  { id: 'economy', name: '経済', icon: 'fa-chart-line', color: 'from-rose-500 to-red-600', desc: '市場動向・株価・為替・マネー' },
+  { id: 'entertainment', name: 'エンタメ', icon: 'fa-film', color: 'from-fuchsia-500 to-pink-500', desc: '映画・音楽・流行のカルチャー' },
+  { id: 'sports', name: 'スポーツ', icon: 'fa-volleyball', color: 'from-green-500 to-emerald-600', desc: 'ハイライト・アスリートの最新情報' },
+];
+
+const AGE_CONFIGS = {
+  '10s': { label: '10代', pitchMale: 1.2, pitchFemale: 1.4, rateMale: 1.1, rateFemale: 1.15 },
+  '20s': { label: '20代', pitchMale: 1.05, pitchFemale: 1.25, rateMale: 1.05, rateFemale: 1.1 },
+  '30s': { label: '30代', pitchMale: 0.95, pitchFemale: 1.05, rateMale: 1.0, rateFemale: 1.0 },
+  '40s': { label: '40代', pitchMale: 0.85, pitchFemale: 0.95, rateMale: 0.95, rateFemale: 0.95 },
+  '50s': { label: '50代', pitchMale: 0.75, pitchFemale: 0.85, rateMale: 0.9, rateFemale: 0.9 },
+  '60s': { label: '60代', pitchMale: 0.65, pitchFemale: 0.75, rateMale: 0.85, rateFemale: 0.85 },
+};
+
+// Application State
+const state = {
+  isPlaying: false,
+  currentChannel: CHANNELS[3], // Default Tech
+  personality: {
+    gender: 'female',
+    age: '30s'
+  },
+  theme: 'system',
+  scriptQueue: [],
+  currentScript: null,
+  history: [],
+  isFetchingScript: false,
+  synth: window.speechSynthesis,
+  voices: []
+};
+
+
+// Load Available System TTS Voices
+function initVoices() {
+  if (!state.synth) return;
+  state.voices = state.synth.getVoices().filter(v => v.lang.includes('ja') || v.lang.includes('JP'));
+}
+
+if (typeof speechSynthesis !== 'undefined') {
+  speechSynthesis.onvoiceschanged = initVoices;
+}
+
+// Get standard or tuned voice parameters
+function getVoiceParams() {
+  const ageCfg = AGE_CONFIGS[state.personality.age] || AGE_CONFIGS['30s'];
+  const isFemale = state.personality.gender === 'female';
+  
+  const pitch = isFemale ? ageCfg.pitchFemale : ageCfg.pitchMale;
+  const rate = isFemale ? ageCfg.rateFemale : ageCfg.rateMale;
+
+  // Attempt to select best matching Japanese voice if available
+  let selectedVoice = null;
+  if (state.voices.length > 0) {
+    if (isFemale) {
+      selectedVoice = state.voices.find(v => v.name.includes('Kyoko') || v.name.includes('Otoya') || v.name.toLowerCase().includes('female')) || state.voices[0];
+    } else {
+      selectedVoice = state.voices.find(v => v.name.includes('Otoya') || v.name.toLowerCase().includes('male')) || state.voices[0];
+    }
+  }
+
+  return { pitch, rate, voice: selectedVoice };
+}
+
+
+// Call Gemini API to create dynamic, natural radio host monologues
+async function generateRadioTalk(channelObj, gender, age) {
+  const ageLabel = AGE_CONFIGS[age]?.label || '30代';
+  const genderLabel = gender === 'female' ? '女性' : '男性';
+
+  const systemInstruction = `あなたはラジオ番組のパーソナリティー（${genderLabel}・${ageLabel}）です。
+自然でテンポが良く、聴き手がBGM感覚で心地よく聴けるラジオトーク（モノローグ）を作成してください。
+
+【制約事項】
+- 丁寧語（「〜ですね」「〜でしょうか」等）をベースに親しみやすいトーン。
+- 最新のトレンド、話題、身近なトリビア、考察を交える。
+- ラジオジングル風の導入「〜がお送りしています」「さて、続いてのトピックは...」などを自然に入れる。
+- 1回のトークの長さは、文字数にして300文字〜500文字程度。
+- JSON形式でレスポンスしてください。`;
+
+  const userQuery = `ジャンル「${channelObj.name}」に関する最近の話題や興味深いトピック、考察について1セッション分語ってください。`;
+
+  const apiKey = ""; // Canvas auto-injects runtime API key
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+  const payload = {
+    contents: [{ parts: [{ text: userQuery }] }],
+    tools: [{ "google_search": {} }],
+    systemInstruction: { parts: [{ text: systemInstruction }] },
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          title: { type: "STRING", description: "トピックの短いタイトル (20文字以内)" },
+          script: { type: "STRING", description: "パーソナリティーが話す原稿本文" },
+          nextTopicPreview: { type: "STRING", description: "次回予告の一言" }
+        },
+        required: ["title", "script", "nextTopicPreview"]
+      }
+    }
+  };
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) throw new Error('API Request failed');
+
+    const result = await response.json();
+    const candidateText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (candidateText) {
+      return JSON.parse(candidateText);
+    }
+  } catch (err) {
+    console.warn("Gemini API generation failed or offline. Using fallback radio script.", err);
+  }
+
+  // Fallback Dynamic Scripts if API fails/throttles
+  return getFallbackScript(channelObj, genderLabel, ageLabel);
+}
+
+function getFallbackScript(channelObj, genderLabel, ageLabel) {
+  const fallbackDatabase = {
+    tech: [
+      {
+        title: "生成AIと日常の融合",
+        script: `皆さんこんにちは！AI Talk Radio、テクノロジーチャンネルです。\n最近はスマートフォンだけでなく、家電やウェアラブル端末にも日常的にAIが組み込まれるようになってきましたね。ただ便利になるだけでなく、個人の好みに寄り添うパートナーのような存在になりつつあります。今後どう進化した製品が出てくるのかワクワクしますね。`,
+        nextTopicPreview: "次世代のバッテリー技術革新について"
+      },
+      {
+        title: "次世代通信と働き方",
+        script: `さて、続いては通信技術と最新のワークスタイルについてです。\nどこにいてもストレスなく超高速通信ができる環境が整い、地方や海外からリモートでチーム開発をするスタイルが定着してきました。場所を選ばない働き方は、これからさらに面白いアイデアを生み出すきっかけになりそうですね。`,
+        nextTopicPreview: "量子コンピューティングの最新動向"
+      }
+    ],
+    business: [
+      {
+        title: "リスキリングの最新トレンド",
+        script: `ビジネスチャンネルをお聴きの皆さん、いかがお過ごしですか？\n最近注目を集めているのが、キャリアのアップデートに向けた「リスキリング」です。特にデータ分析やプログラミング、AI活用スキルを身につける社会人が急増しています。自分自身の強みを掛け合わせることで、新しい価値を作っていきたいですね。`,
+        nextTopicPreview: "スタートアップの最新資金調達事情"
+      }
+    ],
+    sports: [
+      {
+        title: "データスポーツ解析の面白さ",
+        script: `スポーツチャンネルです！\n最近のスポーツ界では、選手の動きをミリ単位でトラッキングするデータ解析が勝敗を大きく左右しています。観客側にとっても、リアルタイムで統計データが見られるため、観戦の楽しみ方がガラリと変わりましたよね。`,
+        nextTopicPreview: "注目の若手アスリート国際大会"
+      }
+    ]
+  };
+
+  const list = fallbackDatabase[channelObj.id] || fallbackDatabase['tech'];
+  const randomIndex = Math.floor(Math.random() * list.length);
+  return list[randomIndex];
+}
+
+
+async function ensureQueueFilled() {
+  if (state.scriptQueue.length < 2 && !state.isFetchingScript) {
+    state.isFetchingScript = true;
+    try {
+      const talkData = await generateRadioTalk(state.currentChannel, state.personality.gender, state.personality.age);
+      if (talkData) {
+        state.scriptQueue.push(talkData);
+        updateNextPreviewUI();
+      }
+    } finally {
+      state.isFetchingScript = false;
+    }
+  }
+}
+
+async function playNextInQueue() {
+  if (!state.isPlaying) return;
+
+  if (state.scriptQueue.length === 0) {
+    document.getElementById('current-topic-title').innerText = "スクリプトを読み込み中...";
+    document.getElementById('current-script-text').innerText = "AIパーソナリティーが新しいトピックを準備しています...";
+    await ensureQueueFilled();
+  }
+
+  const nextTalk = state.scriptQueue.shift();
+  if (!nextTalk) return;
+
+  state.currentScript = nextTalk;
+  state.history.unshift({ ...nextTalk, channel: state.currentChannel.name, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
+  
+  updatePlayerUI(nextTalk);
+  updateHistoryUI();
+  speakScript(nextTalk.script);
+
+  // Prefetch next segment in background
+  ensureQueueFilled();
+}
+
+function speakScript(text) {
+  if (!state.synth) return;
+
+  state.synth.cancel(); // Stop ongoing speech
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  const { pitch, rate, voice } = getVoiceParams();
+
+  utterance.pitch = pitch;
+  utterance.rate = rate;
+  if (voice) utterance.voice = voice;
+  utterance.lang = 'ja-JP';
+
+  utterance.onstart = () => {
+    startEqualizerAnimation();
+  };
+
+  utterance.onend = () => {
+    stopEqualizerAnimation();
+    if (state.isPlaying) {
+      // Small pause between topics for realistic radio feel
+      setTimeout(() => {
+        playNextInQueue();
+      }, 1500);
+    }
+  };
+
+  utterance.onerror = (e) => {
+    console.error("Speech Synthesis Error", e);
+    stopEqualizerAnimation();
+    if (state.isPlaying) {
+      setTimeout(playNextInQueue, 2000);
+    }
+  };
+
+  state.synth.speak(utterance);
+}
+
+function togglePlay() {
+  state.isPlaying = !state.isPlaying;
+  
+  if (state.isPlaying) {
+    if (state.synth.paused) {
+      state.synth.resume();
+      startEqualizerAnimation();
+    } else {
+      playNextInQueue();
+    }
+  } else {
+    state.synth.pause();
+    stopEqualizerAnimation();
+  }
+
+  updatePlayButtonUI();
+}
+
+function skipTopic() {
+  if (!state.isPlaying) return;
+  state.synth.cancel();
+  playNextInQueue();
+}
+
+function changeChannel(channelId) {
+  const found = CHANNELS.find(c => c.id === channelId);
+  if (!found || state.currentChannel.id === channelId) return;
+
+  state.currentChannel = found;
+  state.scriptQueue = []; // Clear queue on channel switch
+  state.synth.cancel();
+
+  renderChannelsGrid();
+  document.getElementById('channel-current-tag').innerText = `● 選択中: ${found.name}`;
+
+  if (state.isPlaying) {
+    playNextInQueue();
+  } else {
+    document.getElementById('current-topic-title').innerText = `${found.name}チャンネルをセットしました`;
+    document.getElementById('current-script-text').innerText = `再生ボタンを押すと、${found.name}に関するラジオトークを開始します。`;
+  }
+}
+
+
+let eqInterval = null;
+function startEqualizerAnimation() {
+  const bars = document.querySelectorAll('.equalizer-bar');
+  const statusDot = document.getElementById('status-dot');
+  if (statusDot) statusDot.className = "absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-900 animate-pulse";
+
+  if (eqInterval) clearInterval(eqInterval);
+  eqInterval = setInterval(() => {
+    bars.forEach(bar => {
+      const h = Math.floor(Math.random() * 85) + 15;
+      bar.style.height = `${h}%`;
+    });
+  }, 120);
+}
+
+function stopEqualizerAnimation() {
+  if (eqInterval) clearInterval(eqInterval);
+  const bars = document.querySelectorAll('.equalizer-bar');
+  const statusDot = document.getElementById('status-dot');
+  if (statusDot) statusDot.className = "absolute bottom-1 right-1 w-4 h-4 rounded-full bg-slate-500 border-2 border-slate-900";
+
+  bars.forEach(bar => {
+    bar.style.height = '15%';
+  });
+}
+
+function updatePlayButtonUI() {
+  const btnIcon = document.getElementById('play-btn-icon');
+  const btnText = document.getElementById('play-btn-text');
+  const btn = document.getElementById('btn-play-pause');
+
+  if (state.isPlaying) {
+    btnIcon.setAttribute('data-lucide', 'pause');
+    btnText.innerText = "一時停止";
+    btn.className = "w-full py-3 px-6 rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30 transition flex items-center justify-center gap-2";
+  } else {
+    btnIcon.setAttribute('data-lucide', 'play');
+    btnText.innerText = "ラジオを聞く (ON)";
+    btn.className = "w-full py-3 px-6 rounded-xl font-bold bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/30 transition flex items-center justify-center gap-2";
+  }
+  lucide.createIcons();
+}
+
+function updatePlayerUI(talkData) {
+  document.getElementById('current-topic-title').innerText = talkData.title || "ラジオトーク再生中";
+  document.getElementById('current-script-text').innerText = talkData.script || "";
+  document.getElementById('broadcast-time').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  updateNextPreviewUI();
+}
+
+function updateNextPreviewUI() {
+  const nextPreviewEl = document.getElementById('next-topic-preview');
+  if (state.scriptQueue.length > 0) {
+    nextPreviewEl.innerText = state.scriptQueue[0].title || state.scriptQueue[0].nextTopicPreview;
+  } else {
+    nextPreviewEl.innerText = "次回の話題をAIが生成中...";
+  }
+}
+
+function updateHistoryUI() {
+  const container = document.getElementById('history-list');
+  if (state.history.length === 0) return;
+
+  container.innerHTML = state.history.slice(0, 10).map(item => `
+    <div class="p-2 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between">
+      <div class="truncate mr-2">
+        <span class="font-bold text-brand-600 dark:text-brand-400">[${item.channel}]</span>
+        <span class="text-slate-800 dark:text-slate-200 ml-1 font-medium">${item.title}</span>
+      </div>
+      <span class="text-[10px] text-slate-400 shrink-0">${item.time}</span>
+    </div>
+  `).join('');
+}
+
+function renderChannelsGrid() {
+  const container = document.getElementById('channels-grid');
+  container.innerHTML = CHANNELS.map(ch => {
+    const isActive = ch.id === state.currentChannel.id;
+    return `
+      <div onclick="changeChannel('${ch.id}')" class="cursor-pointer group relative overflow-hidden rounded-2xl p-4 transition-all duration-200 border ${
+        isActive 
+          ? 'bg-white dark:bg-slate-800 border-brand-500 shadow-md ring-2 ring-brand-500/20' 
+          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+      }">
+        <div class="flex items-center justify-between mb-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr ${ch.color} text-white flex items-center justify-center shadow">
+            <i class="fa-solid ${ch.icon} text-lg"></i>
+          </div>
+          ${isActive ? '<span class="w-2 h-2 rounded-full bg-brand-500"></span>' : ''}
+        </div>
+        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">${ch.name}</h3>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">${ch.desc}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAgeSelector() {
+  const container = document.getElementById('age-selector-container');
+  container.innerHTML = Object.keys(AGE_CONFIGS).map(key => {
+    const isSelected = state.personality.age === key;
+    return `
+      <button type="button" onclick="selectAge('${key}')" class="p-2.5 rounded-xl border text-xs font-bold transition ${
+        isSelected 
+          ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-300' 
+          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
+      }">
+        ${AGE_CONFIGS[key].label}
+      </button>
+    `;
+  }).join('');
+
+  updatePersonalityBadge();
+}
+
+function selectAge(ageKey) {
+  state.personality.age = ageKey;
+  renderAgeSelector();
+  updatePitchRateVal();
+}
+
+function setGender(gender) {
+  state.personality.gender = gender;
+  document.querySelectorAll('.gender-btn').forEach(btn => {
+    const isTarget = btn.getAttribute('data-gender') === gender;
+    btn.className = isTarget 
+      ? 'gender-btn flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 font-bold text-sm'
+      : 'gender-btn flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-medium text-sm';
+  });
+  updatePitchRateVal();
+}
+
+function updatePitchRateVal() {
+  const params = getVoiceParams();
+  document.getElementById('pitch-val').innerText = params.pitch.toFixed(2);
+  document.getElementById('rate-val').innerText = params.rate.toFixed(2);
+}
+
+function updatePersonalityBadge() {
+  const gText = state.personality.gender === 'female' ? '女性' : '男性';
+  const aText = AGE_CONFIGS[state.personality.age]?.label || '30代';
+  document.getElementById('personality-badge').innerText = `${gText} / ${aText}`;
+  document.getElementById('personality-title').innerText = `ナビゲーター (${gText} / ${aText})`;
+}
+
+
+function setTheme(mode) {
+  state.theme = mode;
+  const root = document.documentElement;
+  
+  if (mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    root.classList.add('dark');
+    document.getElementById('theme-icon').setAttribute('data-lucide', 'moon');
+  } else {
+    root.classList.remove('dark');
+    document.getElementById('theme-icon').setAttribute('data-lucide', 'sun');
+  }
+  
+  document.getElementById('theme-dropdown').classList.add('hidden');
+  lucide.createIcons();
+}
+
+
+window.onload = function() {
+  initVoices();
+  renderChannelsGrid();
+  renderAgeSelector();
+
+  // Setup Play/Pause Button
+  document.getElementById('btn-play-pause').addEventListener('click', togglePlay);
+  document.getElementById('btn-skip-topic').addEventListener('click', skipTopic);
+
+  // Setup Theme Menu Toggle
+  const themeBtn = document.getElementById('btn-theme-menu');
+  const themeDropdown = document.getElementById('theme-dropdown');
+  themeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    themeDropdown.classList.toggle('hidden');
+  });
+  document.addEventListener('click', () => themeDropdown.classList.add('hidden'));
+
+  // Personality Modal Events
+  const modal = document.getElementById('personality-modal');
+  document.getElementById('btn-personality-modal').addEventListener('click', () => {
+    modal.classList.remove('hidden');
+  });
+  document.getElementById('btn-close-modal').addEventListener('click', () => {
+    modal.classList.add('hidden');
+  });
+
+  document.querySelectorAll('.gender-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setGender(btn.getAttribute('data-gender'));
+    });
+  });
+
+  document.getElementById('btn-save-personality').addEventListener('click', () => {
+    updatePersonalityBadge();
+    modal.classList.add('hidden');
+    // If playing, restart current talk with new voice profile
+    if (state.isPlaying && state.currentScript) {
+      speakScript(state.currentScript.script);
+    }
+  });
+
+  // Initialize Lucide Icons
+  lucide.createIcons();
+};
+</script>
+</body>
+</html>
